@@ -1,26 +1,19 @@
-Stage 1: Define base image that will be used for production
+# Learn about building .NET container images:
+# https://github.com/dotnet/dotnet-docker/blob/main/samples/README.md
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+WORKDIR /source
 
-FROM mcr.microsoft.com/dotnet/core/aspnet AS base
+# copy csproj and restore as distinct layers
+COPY WebDocker/*.csproj .
+RUN dotnet restore --use-current-runtime  
+
+# copy everything else and build app
+COPY WebDocker/. .
+RUN dotnet publish -o /app
+
+
+# final stage/image
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
-EXPOSE 80
-
-
-Stage 2: Build and publish the code
-
-FROM mcr.microsoft.com/dotnet/core/sdk AS build
-WORKDIR /app
-COPY Angular_ASPNETCore_CustomersService.csproj .
-RUN dotnet restore
-COPY . .
-RUN dotnet build -c Release
-
-FROM build AS publish
-RUN dotnet publish -c Release -o /publish
-
-
-Stage 3: Build and publish the code
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /publish .
-ENTRYPOINT ["dotnet", "App-Name.dll"]
+COPY --from=build /app .
+ENTRYPOINT ["dotnet", "WebDocker.dll"]
